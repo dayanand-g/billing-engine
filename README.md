@@ -37,10 +37,10 @@ This project uses a decoupled, Service-Oriented Architecture (SOA) approach.
 - Node.js (v16+)
 - npm or yarn
 
-### 1. Start the Backend
+### 1. For local setup start the Backend
 The backend runs on `http://localhost:3000`.
 
 ```bash
-cd zenskar-billing-backend
+cd api
 npm install
 npm run dev
