@@ -97,53 +97,98 @@ app.post('/api/usage', (req, res) => {
   });
 });
 
-// 5. Generate Invoice (The Calculation Engine)
-app.get('/api/customers/:customerId/invoice', (req, res) => {
+// 5. Generate Invoice (The Calculation Engine) (This is for local use only)
+// app.get('/api/customers/:customerId/invoice', (req, res) => {
+//   const { customerId } = req.params;
+
+//   // 1. Get Customer & Plan
+//   const customer = db.customers.find(c => c.id === customerId);
+//   if (!customer || !customer.planId) {
+//     return res.status(404).json({ error: 'Customer or active subscription not found' });
+//   }
+
+//   const plan = db.plans.find(p => p.id === customer.planId);
+
+//   // 2. Filter usage for This customer
+//   const customerUsage = db.usageEvents.filter(e => e.customerId === customerId);
+
+//   // 3. Calculate Usage Costs
+//   let totalUsageCost = 0;
+//   const breakdown = [];
+
+//   plan.usageRates.forEach(rate => {
+//     // Sum up all units for this specific metric (e.g., all API_CALLs)
+//     const totalUnits = customerUsage
+//       .filter(e => e.metric === rate.metric)
+//       .reduce((sum, e) => sum + e.quantity, 0);
+
+//     const costForMetric = totalUnits * rate.ratePerUnit;
+//     totalUsageCost += costForMetric;
+
+//     breakdown.push({
+//       metric: rate.metric,
+//       totalUnits,
+//       rate: rate.ratePerUnit,
+//       subtotal: costForMetric
+//     });
+//   });
+
+//   // 4. Final Calculation
+//   const totalAmount = plan.basePrice + totalUsageCost;
+
+//   res.json({
+//     customerName: customer.name,
+//     planName: plan.name,
+//     billingPeriod: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+//     baseSubscriptionFee: plan.basePrice,
+//     usageBreakdown: breakdown,
+//     totalAmountDue: totalAmount
+//   });
+// });
+
+// For the production use only
+app.get('/api/customers/:customerId/invoice', async (req, res) => {
   const { customerId } = req.params;
 
-  // 1. Get Customer & Plan
-  const customer = db.customers.find(c => c.id === customerId);
-  if (!customer || !customer.planId) {
-    return res.status(404).json({ error: 'Customer or active subscription not found' });
-  }
+  try {
+    // 1. Fetch Customer and their Plan using a JOIN
+    const customerData = await sql`
+      SELECT c.name as customer_name, p.name as plan_name, p.base_price, p.usage_rates
+      FROM customers c
+      JOIN plans p ON c.plan_id = p.id
+      WHERE c.id = ${customerId}
+    `;
 
-  const plan = db.plans.find(p => p.id === customer.planId);
+    if (customerData.length === 0) return res.status(404).send('Not found');
+    const customer = customerData[0];
 
-  // 2. Filter usage for This customer
-  const customerUsage = db.usageEvents.filter(e => e.customerId === customerId);
+    // 2. Fetch Usage and Aggregate in SQL
+    const usageData = await sql`
+      SELECT metric, SUM(quantity) as total_units
+      FROM usage_events
+      WHERE customer_id = ${customerId}
+      GROUP BY metric
+    `;
 
-  // 3. Calculate Usage Costs
-  let totalUsageCost = 0;
-  const breakdown = [];
-
-  plan.usageRates.forEach(rate => {
-    // Sum up all units for this specific metric (e.g., all API_CALLs)
-    const totalUnits = customerUsage
-      .filter(e => e.metric === rate.metric)
-      .reduce((sum, e) => sum + e.quantity, 0);
-
-    const costForMetric = totalUnits * rate.ratePerUnit;
-    totalUsageCost += costForMetric;
-
-    breakdown.push({
-      metric: rate.metric,
-      totalUnits,
-      rate: rate.ratePerUnit,
-      subtotal: costForMetric
+    // 3. Perform the billing math
+    let totalUsageCost = 0;
+    const breakdown = customer.usage_rates.map(rate => {
+      const usage = usageData.find(u => u.metric === rate.metric);
+      const units = usage ? parseInt(usage.total_units) : 0;
+      const subtotal = units * parseFloat(rate.ratePerUnit);
+      totalUsageCost += subtotal;
+      return { metric: rate.metric, totalUnits: units, subtotal };
     });
-  });
 
-  // 4. Final Calculation
-  const totalAmount = plan.basePrice + totalUsageCost;
-
-  res.json({
-    customerName: customer.name,
-    planName: plan.name,
-    billingPeriod: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-    baseSubscriptionFee: plan.basePrice,
-    usageBreakdown: breakdown,
-    totalAmountDue: totalAmount
-  });
+    res.json({
+      customerName: customer.customer_name,
+      totalAmountDue: parseFloat(customer.base_price) + totalUsageCost,
+      usageBreakdown: breakdown
+      // ... add other fields as needed
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 //  Server listens on the specified port

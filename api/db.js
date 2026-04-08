@@ -1,10 +1,7 @@
-const { sql } = require('@vercel/postgres');
+const { neon } = require('@neondatabase/serverless');
 
-// This is exactly how you'll fetch plans from the live database
-async function getPlans() {
-  const { rows } = await sql`SELECT * FROM plans;`;
-  return rows;
-}
+// This automatically uses the environment variable injected by the Vercel/Neon integration
+const sql = neon(process.env.DATABASE_URL);
 
 // This acts as our mock database for the prototype.
 // const db = {
@@ -31,4 +28,4 @@ async function getPlans() {
 //   usageEvents: [] 
 // };
 
-module.exports = { sql, getPlans };;
+module.exports = { sql };
