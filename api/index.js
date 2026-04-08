@@ -1,15 +1,14 @@
-// server.js
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const db = require('./db');
 
 const app = express();
-const PORT = 3000;
+//const PORT = 3000;
 
 // Middleware
-app.use(cors()); // Allow frontend to connect
-app.use(express.json()); // Allow Express to read JSON data from POST requests
+app.use(cors()); 
+app.use(express.json());
 
 // Routes
 // Health Check: Just to make sure the server is alive
@@ -148,6 +147,8 @@ app.get('/api/customers/:customerId/invoice', (req, res) => {
 });
 
 //  Server listens on the specified port
-app.listen(PORT, () => {
-  console.log(`🚀 Zenskar Billing Engine running on http://localhost:${PORT}`);
-});
+// app.listen(PORT, () => {
+//   console.log(`🚀 Zenskar Billing Engine running on http://localhost:${PORT}`);
+// });
+
+module.exports = app;
