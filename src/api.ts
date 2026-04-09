@@ -1,9 +1,14 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = '/api';
 
 interface PlanData {
-  [key: string]: unknown;
+  name: string;
+  basePrice: number;
+  usageRates: Array<{
+    metric: string;
+    ratePerUnit: number;
+  }>;
 }
 
 export interface UsageBreakdownItem {
@@ -22,12 +27,21 @@ export interface InvoiceData {
   totalAmountDue: number;
 }
 
+const api = axios.create({
+  baseURL: API_BASE_URL,
+});
+
 export const createPlan = async (planData: PlanData) => {
-  const response = await axios.post(`${API_BASE_URL}/plans`, planData);
+  const response = await api.post(`/plans`, planData);
   return response.data;
 };
 
 export const getInvoice = async (customerId: string): Promise<InvoiceData> => {
-  const response = await axios.get(`http://localhost:3000/api/customers/${customerId}/invoice`);
+  const response = await api.get(`/customers/${customerId}/invoice`);
+  return response.data;
+};
+
+export const trackUsage = async (usageData: { customerId: string; metric: string; quantity: number }) => {
+  const response = await api.post('/usage', usageData);
   return response.data;
 };
