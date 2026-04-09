@@ -72,8 +72,8 @@ app.get('/api/customers/:customerId/invoice', async (req, res) => {
   const { customerId } = req.params;
 
   try {
-    // Fetch Customer and Plan with a JOIN
-    const customerData = await sql`
+      // Fetch Customer and Plan with a JOIN
+      const customerData = await sql`
       SELECT c.name as customer_name, p.name as plan_name, p.base_price, p.usage_rates
       FROM customers c
       JOIN plans p ON c.plan_id = p.id
@@ -83,8 +83,8 @@ app.get('/api/customers/:customerId/invoice', async (req, res) => {
     if (customerData.length === 0) return res.status(404).json({ error: 'Customer not found' });
     const customer = customerData[0];
 
-    // Aggregate usage in SQL
-    const usageData = await sql`
+      // Aggregate usage in SQL
+      const usageData = await sql`
       SELECT metric, SUM(quantity) as total_units
       FROM usage_events
       WHERE customer_id = ${customerId}
